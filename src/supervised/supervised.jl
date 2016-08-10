@@ -36,12 +36,12 @@ islipschitzcont_deriv(::SupervisedLoss) = false
 
 # --------------------------------------------------------------
 
-@inline function value(loss::SupervisedLoss, target::AbstractVecOrMat, output::AbstractVecOrMat)
+@inline function value(loss::SupervisedLoss, target::AbstractArray, output::AbstractArray)
     buffer = similar(output)
     value!(buffer, loss, target, output)
 end
 
-@inline function deriv(loss::SupervisedLoss, target::AbstractVector, output::AbstractVecOrMat)
+@inline function deriv(loss::SupervisedLoss, target::AbstractArray, output::AbstractArray)
     buffer = similar(output)
     deriv!(buffer, loss, target, output)
 end
@@ -52,6 +52,7 @@ end
 end
 
 # --------------------------------------------------------------
+# value!, deriv! on with `target` and `output` vectors
 
 function value!(buffer::AbstractVector, loss::SupervisedLoss, target::AbstractVector, output::AbstractVector)
     n = length(output)
@@ -72,6 +73,7 @@ function deriv!(buffer::AbstractVector, loss::SupervisedLoss, target::AbstractVe
 end
 
 # --------------------------------------------------------------
+# When `target` is a vector, and `output` is a matrix, do broadcasting
 
 function value!(buffer::AbstractMatrix, loss::SupervisedLoss, target::AbstractVector, output::AbstractMatrix)
     n = size(output, 2)
@@ -98,30 +100,50 @@ function deriv!(buffer::AbstractMatrix, loss::SupervisedLoss, target::AbstractVe
 end
 
 # --------------------------------------------------------------
+# Catch all functions for higher-order arrays.
 
-function value!(buffer::AbstractMatrix, loss::SupervisedLoss, target::AbstractMatrix, output::AbstractMatrix)
-    n = size(output, 2)
-    k = size(output, 1)
-    @_dimcheck size(target) == size(output) && size(buffer) == (k, n)
-    for i = 1:n
-        @simd for j = 1:k
-            @inbounds buffer[j, i] = value(loss, target[j, i], output[j, i])
-        end
-    end
-    buffer
+function value!(buffer::AbstractArray, loss::SupervisedLoss, target::AbstractArray, output::AbstractArray)
+    value!(view(buffer,:), loss, view(target,:), view(output,:))
 end
 
-function grad!(buffer::AbstractMatrix, loss::SupervisedLoss, target::AbstractMatrix, output::AbstractMatrix)
-    n = size(output, 2)
-    k = size(output, 1)
-    @_dimcheck size(target) == size(output) && size(buffer) == (k, n)
-    for i = 1:n
-        @simd for j = 1:k
-            @inbounds buffer[j, i] = deriv(loss, target[j, i], output[j, i])
-        end
-    end
-    buffer
+function deriv!(buffer::AbstractArray, loss::SupervisedLoss, target::AbstractArray, output::AbstractArray)
+    deriv!(view(buffer,:), loss, view(target,:), view(output,:))
 end
+
+function sumvalue(loss::SupervisedLoss, target::AbstractArray, output::AbstractArray)
+    sumvalue(loss, view(target,:), view(output,:))
+end
+
+function sumderiv(loss::SupervisedLoss, target::AbstractArray, output::AbstractArray)
+    sumderiv(loss, view(target,:), view(output,:))
+end
+
+# # --------------------------------------------------------------
+# # TODO: remove these if view approach is just as good
+
+# function value!(buffer::AbstractMatrix, loss::SupervisedLoss, target::AbstractMatrix, output::AbstractMatrix)
+#     n = size(output, 2)
+#     k = size(output, 1)
+#     @_dimcheck size(target) == size(output) && size(buffer) == (k, n)
+#     for i = 1:n
+#         @simd for j = 1:k
+#             @inbounds buffer[j, i] = value(loss, target[j, i], output[j, i])
+#         end
+#     end
+#     buffer
+# end
+
+# function grad!(buffer::AbstractMatrix, loss::SupervisedLoss, target::AbstractMatrix, output::AbstractMatrix)
+#     n = size(output, 2)
+#     k = size(output, 1)
+#     @_dimcheck size(target) == size(output) && size(buffer) == (k, n)
+#     for i = 1:n
+#         @simd for j = 1:k
+#             @inbounds buffer[j, i] = deriv(loss, target[j, i], output[j, i])
+#         end
+#     end
+#     buffer
+# end
 
 # --------------------------------------------------------------
 
