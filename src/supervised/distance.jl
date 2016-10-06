@@ -453,8 +453,8 @@ isstronglyconvex(::LogitDistLoss) = false
 immutable QuantileLoss{T <: Number} <: DistanceLoss
     τ::T
 end
-value{T <: Number}(loss::QuantileLoss{T}, diff::T) = diff * (T(0 < diff) - loss.τ)
-deriv{T <: Number}(loss::QuantileLoss{T}, diff::T) = (loss.τ - T(0 > diff))
+value{T <: Number}(loss::QuantileLoss{T}, diff::T) = diff * (T(diff > 0) - loss.τ)
+deriv{T <: Number}(loss::QuantileLoss{T}, diff::T) = (T(diff > 0) - loss.τ)
 deriv2{T <: Number}(::QuantileLoss{T}, diff::T) = zero(T)
 function value_deriv{T <: Number}(loss::QuantileLoss{T}, diff::T)
     value(loss,diff), deriv(loss, diff)
